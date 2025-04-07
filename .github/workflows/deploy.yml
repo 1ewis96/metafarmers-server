@@ -1,50 +1,33 @@
-name: Deploy to Lightsail
+- name: Deploy to Lightsail
+  run: |
+    ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
+      # Load NVM
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+      nvm install node
+      nvm use node
 
-on:
-  push:
-    branches: [ main ]
+      # Ensure pm2 is installed and available
+      npm install -g pm2
+      export PATH="$HOME/.npm-global/bin:$PATH"
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+      # Move into project directory
+      cd /metafarmers-server
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Ensure correct ownership so git & npm can work
+      sudo chown -R ec2-user:ec2-user /metafarmers-server
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.LIGHTSAIL_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
+      # Make Git happy
+      git config --global --add safe.directory /metafarmers-server
+      git pull origin main
 
-    - name: Deploy to Lightsail
-      run: |
-        ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
-          # Load NVM
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          nvm install node
-          nvm use node
+      # Install deps
+      npm install --unsafe-perm
 
-          # Go to project directory
-          cd /metafarmers-server
-
-          # Git safe directory config
-          git config --global --add safe.directory /metafarmers-server
-          git pull origin main
-
-          # Fix ownership for npm install (adjust user if needed)
-          sudo chown -R ec2-user:ec2-user .
-
-          # Install deps
-          npm install --unsafe-perm
-
-          # Start or restart app using pm2
-          if pm2 list | grep -q app; then
-            pm2 restart app
-          else
-            pm2 start server.js --name app
-          fi
-        EOF
+      # Start/restart the server
+      if pm2 list | grep -q app; then
+        pm2 restart app
+      else
+        pm2 start server.js --name app
+      fi
+    EOF
