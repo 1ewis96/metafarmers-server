@@ -22,8 +22,8 @@ jobs:
     - name: Deploy to Lightsail
       run: |
         ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
-          cd /metafarmers
-          git pull origin main
+          cd /metafarmers-server
+          sudo git pull origin main
           npm install        # Or pip install -r requirements.txt, etc.
           pm2 restart app    # Or your server restart command
         EOF
