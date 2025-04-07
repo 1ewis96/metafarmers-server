@@ -20,35 +20,35 @@ jobs:
         ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
 
     - name: Deploy to Lightsail
-  run: |
-    ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
-      # Load NVM
-      export NVM_DIR="$HOME/.nvm"
-      [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-      nvm install node
-      nvm use node
+      run: |
+        ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
+          # Load NVM
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          nvm install node
+          nvm use node
 
-      # Ensure pm2 is installed and available
-      npm install -g pm2
-      export PATH="$HOME/.npm-global/bin:$PATH"
+          # Ensure pm2 is installed and available
+          npm install -g pm2
+          export PATH="$HOME/.npm-global/bin:$PATH"
 
-      # Move into project directory
-      cd /metafarmers-server
+          # Navigate to project directory
+          cd /metafarmers-server
 
-      # Ensure correct ownership so git & npm can work
-      sudo chown -R ec2-user:ec2-user /metafarmers-server
+          # Fix permissions (replace ec2-user if using a different user)
+          sudo chown -R ec2-user:ec2-user /metafarmers-server
 
-      # Make Git happy
-      git config --global --add safe.directory /metafarmers-server
-      git pull origin main
+          # Git config to prevent ownership issues
+          git config --global --add safe.directory /metafarmers-server
+          git pull origin main
 
-      # Install deps
-      npm install --unsafe-perm
+          # Install Node dependencies
+          npm install --unsafe-perm
 
-      # Start/restart the server
-      if pm2 list | grep -q app; then
-        pm2 restart app
-      else
-        pm2 start server.js --name app
-      fi
-    EOF
+          # Start or restart app using PM2
+          if pm2 list | grep -q app; then
+            pm2 restart app
+          else
+            pm2 start server.js --name app
+          fi
+        EOF
