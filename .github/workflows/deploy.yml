@@ -2,7 +2,7 @@ name: Deploy to Lightsail
 
 on:
   push:
-    branches: [ main ]  # Change to your deployment branch
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -22,8 +22,26 @@ jobs:
     - name: Deploy to Lightsail
       run: |
         ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
+          # Load NVM and use correct Node version (if using nvm)
+          export NVM_DIR="\$HOME/.nvm"
+          [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+          nvm use node || echo "Node version already set"
+
           cd /metafarmers-server
-          sudo git pull origin main
-          npm install        # Or pip install -r requirements.txt, etc.
-          pm2 restart app    # Or your server restart command
+
+          # Ensure git permissions
+          git pull origin main
+
+          # Fix permissions if needed
+          chown -R \$USER:\$USER .
+
+          # Install dependencies safely
+          npm install
+
+          # Restart with PM2 or start if not already running
+          if pm2 list | grep -q app; then
+            pm2 restart app
+          else
+            pm2 start server.js --name app
+          fi
         EOF
